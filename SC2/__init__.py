@@ -60,7 +60,8 @@ def synthesis(
     N_ensemble: int = 1,
     reference_P00: Optional[torch.Tensor] = None,
     pseudo_coef: float = 1,
-    remove_edge: bool = False
+    remove_edge: bool = False,
+    mask: Optional[Union[np.ndarray, torch.Tensor]] = None,
 ) -> np.ndarray:
     """
     Synthesize images using scattering transform statistics.
@@ -301,9 +302,21 @@ def synthesis(
             coef_list.append(hist_j_factor * func_hist_j(image, J))
         return torch.cat(coef_list, axis=-1)
 
-    # Define loss function
-    def quadratic_loss(target, model):
-        return ((target - model)**2).mean() * 1e8
+    if mask is not None:
+        if type(mask) == np.ndarray:
+            mask = torch.from_numpy(mask)
+        if device == 'gpu' and torch.cuda.is_available():
+            mask = mask.cuda()
+        # If mask is only 2d add a batch dimension
+        if len(mask.shape) == 2:
+            mask = mask[None, :, :]
+        # Define loss function
+        def quadratic_loss(target, model):
+            return (((target - model) * mask)**2).mean() * 1e8
+    else:
+        # Define loss function
+        def quadratic_loss(target, model):
+            return ((target - model)**2).mean() * 1e8
 
     # Synthesis
     image_syn = synthesis_general(
