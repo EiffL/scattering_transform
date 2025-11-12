@@ -60,7 +60,8 @@ def synthesis(
     N_ensemble: int = 1,
     reference_P00: Optional[torch.Tensor] = None,
     pseudo_coef: float = 1,
-    remove_edge: bool = False
+    remove_edge: bool = False,
+    mask: Optional[Union[np.ndarray, torch.Tensor]] = None
 ) -> np.ndarray:
     """
     Synthesize images using scattering transform statistics.
@@ -89,6 +90,9 @@ def synthesis(
         Device to run computations on
     wavelets : str, default='morlet'
         Type of wavelets to use
+    mask : array-like, optional
+        Binary mask where 1 = optimize pixel, 0 = keep pixel fixed at 0.
+        Shape should be (N_image, M, N) or broadcastable to image shape.
 
     Returns
     -------
@@ -311,7 +315,7 @@ def synthesis(
         mode=mode,
         optim_algorithm=optim_algorithm, steps=steps, learning_rate=learning_rate,
         device=device, precision=precision, print_each_step=print_each_step,
-        Fourier=Fourier, ensemble=ensemble,
+        Fourier=Fourier, ensemble=ensemble, mask=mask,
     )
     return image_syn
 
@@ -330,6 +334,7 @@ def synthesis_general(
     print_each_step: bool = False,
     Fourier: bool = False,
     ensemble: bool = False,
+    mask: Optional[Union[np.ndarray, torch.Tensor]] = None,
 ) -> np.ndarray:
     """
     General synthesis function using gradient descent optimization.
@@ -362,6 +367,8 @@ def synthesis_general(
         Whether to optimize in Fourier domain
     ensemble : bool, default=False
         Whether to use ensemble mode
+    mask : array-like, optional
+        Binary mask where 1 = optimize pixel, 0 = keep pixel fixed at 0
 
     Returns
     -------
@@ -390,6 +397,17 @@ def synthesis_general(
         target = target.cuda()
         image_init = image_init.cuda()
 
+    # Format mask (to tensor, to cuda)
+    if mask is not None:
+        if type(mask) == np.ndarray:
+            mask = torch.from_numpy(mask)
+        if precision == 'double':
+            mask = mask.type(torch.DoubleTensor)
+        else:
+            mask = mask.type(torch.FloatTensor)
+        if device == 'gpu' and torch.cuda.is_available():
+            mask = mask.cuda()
+
     # Calculate statistics for target images
     if mode == 'image':
         estimator_target = estimator_function(target)
@@ -399,17 +417,26 @@ def synthesis_general(
 
     # Define optimizable image model
     class OptimizableImage(torch.nn.Module):
-        def __init__(self, input_init, Fourier=False):
+        def __init__(self, input_init, mask=None, Fourier=False):
             super().__init__()
             self.param = torch.nn.Parameter(input_init)
+            self.mask = mask
+            self.Fourier = Fourier
 
-            if Fourier:
-                self.image = torch.fft.ifftn(
+        @property
+        def image(self):
+            if self.Fourier:
+                img = torch.fft.ifftn(
                     self.param[0] + 1j * self.param[1],
                     dim=(-2, -1)
                 ).real
             else:
-                self.image = self.param
+                img = self.param
+
+            # Apply mask every time image is accessed
+            if self.mask is not None:
+                return img * self.mask
+            return img
 
     if Fourier:
         temp = torch.fft.fftn(image_init, dim=(-2, -1))
@@ -417,7 +444,7 @@ def synthesis_general(
     else:
         input_init = image_init
 
-    image_model = OptimizableImage(input_init, Fourier)
+    image_model = OptimizableImage(input_init, mask=mask, Fourier=Fourier)
 
     # Define optimizer
     if optim_algorithm == 'Adam':
