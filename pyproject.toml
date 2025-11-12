@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_backend"
+requires = ["setuptools>=45", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "SC2"
 version = "0.1.0"
 description = "Minimal Scattering Synthesis Package - A lightweight implementation for scattering transform synthesis"
-readme = "README.md"
+readme = "SC2_README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Scientific/Engineering :: Signal Processing",
 ]
@@ -51,15 +52,21 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/SC2"
-Documentation = "https://sc2.readthedocs.io"
-Repository = "https://github.com/yourusername/SC2"
-Issues = "https://github.com/yourusername/SC2/issues"
+Homepage = "https://github.com/EiffL/scattering_transform"
+Repository = "https://github.com/EiffL/scattering_transform"
+Issues = "https://github.com/EiffL/scattering_transform/issues"
+
+[tool.setuptools]
+packages = ["SC2"]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["SC2*"]
-exclude = ["tests*", "docs*"]
+exclude = ["tests*", "docs*", "scattering*", "old_versions*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
 
 [tool.black]
 line-length = 100
