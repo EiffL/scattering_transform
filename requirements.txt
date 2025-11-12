@@ -1,0 +1,10 @@
+# Core dependencies for SC2 package
+numpy>=1.20.0
+torch>=1.9.0
+
+# Optional: For visualization (not required for core functionality)
+# matplotlib>=3.3.0
+
+# Optional: For testing
+# pytest>=7.0.0
+# pytest-cov>=3.0.0
