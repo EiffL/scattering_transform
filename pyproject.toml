@@ -10,7 +10,7 @@ readme = "SC2_README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "SC2 Contributors", email = ""},
+    {name = "SC2 Contributors"},
 ]
 keywords = ["scattering transform", "signal processing", "image synthesis", "wavelet transform"]
 classifiers = [
